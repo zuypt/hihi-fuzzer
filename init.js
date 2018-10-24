@@ -1,3 +1,4 @@
+/* this code will be run inside adobe's javascript console  to create a template PDF file for fuzzing */
 pageBox = [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
 
 box_count_x = [0, 0]
@@ -113,14 +114,15 @@ field_properties = {
 	charLimit: randint,
 	comb: randbool,
 	commitOnSelChange: randbool,
-	currentValueIndices: function (numItems) {
+	currentValueIndices: function (f) {
+		var numItems = f.numItems
 		var length = (randint() % numItems) + 1
 		var A = new Array()
 		for(var i = 0; i < length; i++) A.push( (randint() % numItems) )
 		return [ (randint() % numItems), A ].choice()  
 	},
 	/*TODO defaultStyle: null, */
-	defaultValue: randstring
+	defaultValue: randstring,
 	doNotScroll: randbool,
 	doNotSpellCheck: randbool,
 	delay: randbool,
@@ -148,8 +150,72 @@ field_properties = {
 	readonly: randbool,
 	rect: function () {
 		return next_square(0)
-	}
+	},
+	required: randbool,
+	richText: randbool,
+	richValue: function (f) {
+		try {
+			var spans = f.richValue
+		} catch (err) {
+			return
+		}
+		
+		var span_properties = {
+			alignment: this.alignment(),
+			fontFamily: function() {
+				return ["symbol", "serif", "sans-serif", "cursive", "monospace", "fantasy"]
+			},
+			fontStretch: function () {
+				return ["ultra-condensed", "extra-condensed, condensed", "semi-condensed, normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded"].choice()
+			},
+			fontStyle: function () {
+				return ["italic", "normal"].choice()
+			},
+			fontWeight: function () {
+				/*CHECK should i put it in range */
+				return randint()
+			},
+			strikethrough: randbool,
+			subscript: randbool,
+			superscript: randbool,
+			text: randstring,
+			textColor: randcolor,
+			/*CHECK */
+			textSize: Math.random,
+			underline: randbool
+		}
 
+		if (spans.length) {
+			var r_spans = []
+			for (var i = 0; i < spans.length; i++) {
+				var span = {}
+				for(var prop in span_properties) {
+					span[prop] = span_properties[prop]()
+				}
+				r_spans.push(span)
+			}
+			return r_spans
+		}
+	},
+	rotation: function () {
+		return [0, 190, 180, 270].choice()
+	},
+	strokeColor: randcolor,
+	style: function () {
+		return [style.ch, style.cr, style.di, style.ci, style.st, style.sq].choice()
+	},
+	submitName: randstring,
+	textColor: randcolor,
+	textFont: function () {
+		return [font.Times, font.TimesB, font.TimesI, font.TimesBI, font.Helv, font.HelvB, font.HelvI, font.HelvBI, font.Cour, font.CourB, font.CourI, font.CourBI, font.Symbol, font.ZapfD].choice()
+	},
+	textSize: Math.random,
+	/*TODO type:, */
+	userName: randstring,
+	value: function () {
+
+	},
+	/*TOOD valueAsString:, */
 }
 
 ///////////////////////////////////////textField
