@@ -5,7 +5,7 @@ box_count_x = [0, 0]
 box_count_y = [0, 0]
 
 function next_square(nPage) {
-	var l = 30
+	var l = 50
 	var n = Math.floor(596/l)
 
 	var x0 = ( pageBox[nPage][0] + l*box_count_x[nPage] )
@@ -27,7 +27,7 @@ function next_square(nPage) {
 for (var i = 0; i < 28; i++) {
 	var f = this.addField("text"+i, "text", 0, next_square(0))
 	f.borderColor = color.red
-	f.borderWidth = 1
+	f.lineWidth = 1
 }
 */
 
@@ -57,13 +57,14 @@ randbool = function () {
 }
 
 Array.prototype.choice = function (){
-	return this[Math.abs(Fuzzer.randint()) % this.length];
+	return this[Math.abs(randint()) % this.length];
 }
 
 randstring = function () {
+	/* CHECK */
 	var r = ""
 	var length = (randint() % MAX_STRING_LENGTH) + 1
-	for(var i = 0; i < length; i++) r += String.fromCharCode(randint() % 0xffff)
+	for(var i = 0; i < length; i++) r += String.fromCharCode(randint() & 0xff)
 	return r
 }
 
@@ -85,6 +86,11 @@ randcolor = function () {
 	return c
 }
 
+assert = function (condition, message) {
+    if (!condition) {
+        throw message || "Fuzzer.assertion failed";
+    }
+}
 ///////////////////////////////////////utils
 
 field_properties = {
@@ -111,7 +117,10 @@ field_properties = {
 		return [scaleWhen.always, scaleWhen.never, scaleWhen.tooBig, scaleWhen.tooSmall].choice()
 	},
 	calcOrderIndex: randint,
-	charLimit: randint,
+	/* CHECK */
+	charLimit: function () {
+		return Math.abs(randint()) % 1024
+	},
 	comb: randbool,
 	commitOnSelChange: randbool,
 	currentValueIndices: function (f) {
@@ -127,7 +136,9 @@ field_properties = {
 	doNotSpellCheck: randbool,
 	delay: randbool,
 	display: function () {
-		return [display.visible, display.hidden, display.noprint, display.noView].choice()
+		/* TESTING */
+		//return [display.visible, display.hidden, display.noPrint, display.noView].choice()
+		return display.visible
 	},
 	/*TODO doc: null, */
 	editable: randbool,
@@ -138,7 +149,11 @@ field_properties = {
 	highlight: function () {
 		return [highlight.n, highlight.i, highlight.p, highlight.o].choice()
 	},
-	lineWidth: randint,
+	/* CHECK more relax or not */
+	//lineWidth: randint,
+	lineWidth: function () {
+		return [0, 1, 2, 3].choice()
+	},
 	multiline: randbool,
 	multipleSelection: randbool,
 	/*TODO name: ,*/
@@ -148,16 +163,17 @@ field_properties = {
 	print: randbool,
 	radiosInUnison: randbool,
 	readonly: randbool,
-	rect: function () {
+	//TODO not to messup the layout for now
+	/* rect: function () {
 		return next_square(0)
-	},
+	}, */
 	required: randbool,
 	richText: randbool,
 	richValue: function (f) {
 		try {
 			var spans = f.richValue
 		} catch (err) {
-			return
+			return null
 		}
 		
 		var span_properties = {
@@ -209,19 +225,117 @@ field_properties = {
 	textFont: function () {
 		return [font.Times, font.TimesB, font.TimesI, font.TimesBI, font.Helv, font.HelvB, font.HelvI, font.HelvBI, font.Cour, font.CourB, font.CourI, font.CourBI, font.Symbol, font.ZapfD].choice()
 	},
-	textSize: Math.random,
+	textSize: function () {
+		return Math.abs(randint() % 1024)
+	},
 	/*TODO type:, */
 	userName: randstring,
-	value: function () {
-
-	},
-	/*TOOD valueAsString:, */
+	/* CHECK more relax or not*/
+	value: function (f) {
+		//return {[randint(), randstring(), randintarray()].choice()}
+		field_type = f.type
+		if (field_type == "text") 	return randstring()
+		if (field_type == "button") return null
+		if (field_type == "listbox" || field_type == "combobox") return randintarray()
+		if (field_type == "checkbox" || field_type == "radiobutton") return randstring()
+	}	
+	/*TODO valueAsString:, */
 }
 
+fields_methods = {
+	/*TODO browseForFileToSubmit:, */
+	buttonGetCaption: function(f) {
+		f.buttonGetCaption([0, 1, 2].choice())
+	},
+	buttonGetIcon: function(f) {
+		f.buttonGetIcon([0, 1, 2].choice())
+	},
+	/*TODO buttonImportIcon:, */
+	buttonSetCaption: function(f) {
+		f.buttonSetCaption(randstring(), [0, 1, 2].choice())
+	},
+	buttonSetIcon: function(f) {
+		f.buttonSetIcon(this.getIcon('icon'))
+	},
+	/* CHECK */
+	checkThisBox: function(f) {
+		var nWidget = [0, 1].choice()
+		f.checkThisBox(nWidget, randbool())
+	},
+	clearItems: function(f) {
+		f.clearItems()
+	},
+	defaultIsChecked: function (f) {
+		var nWidget = [0, 1].choice()
+		f.defaultIsChecked(nWidget, randbool())
+	},
+	/* CHECK */
+	deleteItemAt: function (f) {
+		var nIdx = randint()
+		f.deleteItemAt(nIdx)
+	},
+	getArray: function (f) {
+		f.getArray()
+	},
+	/* CHECK */
+	getItemAt: function (f) {
+		var nIdx = randint()
+		f.getItemAt(nIdx, randbool())
+	},
+	getLock: function (f) {
+		f.getlock()
+	},
+	insertItemAt: function (f) {
+		if (randint() % 2 == 0) {
+			f.insertItemAt({cName:randstring(), nIdx: [-1, Math.abs(randint()) % 4]})
+		} else {
+			f.insertItemAt({cName: randstring(), nIdx: [-1, Math.abs(randint()) % 4], cExport: randstring()})
+		}
+	},
+	isBoxChecked: function (f) {
+		f.isBoxChecked([0, 1].choice())
+	},
+	isDefaultChecked: function (f) {
+		f.isBoxChecked([0, 1].choice())
+	},
+	// setAction: function (f) {
+
+	// },
+	setFocus: function (f) {
+		f.setFocus()
+	},
+	/* CHECK */
+	setItems: randintarray
+	/* TODO setLock:, */
+}
+
+function rand_field_properties(f) {
+	for (var prop in field_properties) {
+		try {
+			var r = field_properties[prop](f)
+			assert( r != undefined )
+			if (r != null) f[prop] = r
+		} catch (err) {
+			;
+		}
+	}
+}
+
+function rand_field_methods(f) {
+	for (var prop in field_methods) {
+		try {
+			var r = field_methods[prop](f)
+		} catch (err) {
+			;
+		}
+	}
+}
+
+/* hand crafted fields */
 ///////////////////////////////////////textField
 //stand alone textField
 var f = this.addField("textfield", "text", 0, next_square(0));
-f.borderWidth 	= 1
+f.lineWidth 	= 1
 f.borderColor 	= color.red
 f.charLimit	 = 1337
 f.alignment = "right"
@@ -240,21 +354,21 @@ f.textColor = color.red
 
 //two textFields with same name each on seperate page
 var f = this.addField("textField0", "text", 0, next_square(0));
-f.borderWidth = 1
+f.lineWidth = 1
 f.textColor = color.red
 f.borderColor = color.red
 var f = this.addField("textField0", "text", 1, next_square(1));
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.red
 f.textColor = color.red
 
 //hierachy textField
 var f =this.addField("textField1.A", "text", 0, next_square(0));
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.red
 f.textColor = color.red
 var f = this.addField("textField1.B", "text", 1, next_square(1));
-f.borderWidth = 1
+f.lineWidth = 1
 f.textColor = color.red
 f.borderColor = color.red
 ///////////////////////////////////////textField
@@ -266,7 +380,7 @@ f.buttonSetCaption("button")
 f.buttonAlignX = 10
 f.buttonAlignY = 10
 f.buttonPosition = position.textIconH
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.green
 f.textColor = color.red
 f.borderStyle = border.d;
@@ -278,7 +392,7 @@ f.buttonSetCaption("button0")
 f.buttonAlignX = 10
 f.buttonAlignY = 10
 f.buttonPosition = position.textIconH
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.green
 f.textColor = color.red
 
@@ -287,7 +401,7 @@ f.buttonSetCaption("button0")
 f.buttonAlignX = 10
 f.buttonAlignY = 10
 f.buttonPosition = position.textIconH
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.green
 f.textColor = color.red
 
@@ -298,7 +412,7 @@ f.buttonSetCaption("button1.A")
 f.buttonAlignX = 10
 f.buttonAlignY = 10
 f.buttonPosition = position.textIconH
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.green
 f.textColor = color.red
 var f = this.addField("button1.B", "button", 1, next_square(1))
@@ -306,7 +420,7 @@ f.buttonSetCaption("button1.B")
 f.buttonAlignX = 10
 f.buttonAlignY = 10
 f.buttonPosition = position.textIconH
-f.borderWidth = 1
+f.lineWidth = 1
 f.borderColor = color.green
 f.textColor = color.red
 ///////////////////////////////////////buttonField
@@ -383,6 +497,14 @@ f.borderColor = color.red
 var f = this.addField("checkbox0", "checkbox", 1, next_square(1))
 f.borderStyle = border.d;
 f.borderColor = color.red
+
+//hierachy checkBox
+var f = this.addField("checkbox1.A", "checkbox", 0, next_square(0))
+f.borderStyle = border.d;
+f.borderColor = color.red
+var f = this.addField("checkbox1.B", "checkbox", 1, next_square(1))
+f.borderStyle = border.d;
+f.borderColor = color.red
 ///////////////////////////////////////checkbox
 
 ///////////////////////////////////////radiobutton
@@ -403,5 +525,114 @@ f.borderColor = color.red
 ///////////////////////////////////////signature
 //stand alone signature
 var f = this.addField("signature", "signature", 0, next_square(0))
+///////////////////////////////////////signature
+
+
+/* auto generated fields */
+
+
+///////////////////////////////////////textField
+//stand alone textField
+var f = this.addField("textfield_Z", "text", 0, next_square(0));
+rand_field_properties(f)
+
+//two textFields with same name each on seperate page
+var f = this.addField("textField0_Z", "text", 0, next_square(0));
+rand_field_properties(f)
+var f = this.addField("textField0_Z", "text", 1, next_square(1));
+rand_field_properties(f)
+
+//hierachy textField
+var f =this.addField("textField1.A_Z", "text", 0, next_square(0));
+rand_field_properties(f)
+var f = this.addField("textField1.B_Z", "text", 1, next_square(1));
+rand_field_properties(f)
+
+///////////////////////////////////////textField
+
+///////////////////////////////////////buttonField
+//stand alone button
+var f = this.addField("button_Z", "button", 0, next_square(0))
+f.buttonSetCaption("button")
+rand_field_properties(f)
+f.buttonSetIcon(this.getIcon('icon'))
+
+//buttons with same name on two seperate page
+var f = this.addField("button0_Z", "button", 0, next_square(0))
+f.buttonSetCaption("button0")
+rand_field_properties(f)
+
+var f = this.addField("button0_Z", "button", 1, next_square(1))
+f.buttonSetCaption("button0")
+rand_field_properties(f)
+
+//hierachy button
+var f = this.addField("button1.A_Z", "button", 0, next_square(0))
+f.buttonSetCaption("button1.A")
+rand_field_properties(f)
+var f = this.addField("button1.B_Z", "button", 1, next_square(1))
+f.buttonSetCaption("button1.B")
+rand_field_properties(f)
+///////////////////////////////////////buttonField
+
+///////////////////////////////////////combobox
+//stand alone combobox
+var f = this.addField("combobox_Z", "combobox", 0, next_square(0))
+rand_field_properties(f)
+
+//combobox with same name
+var f = this.addField("combobox0_Z", "combobox", 0, next_square(0))
+rand_field_properties(f)
+var f = this.addField("combobox0_Z", "combobox", 1, next_square(1))
+rand_field_properties(f)
+///////////////////////////////////////combobox
+
+///////////////////////////////////////listbox
+//stand alone combobox
+var f = this.addField("listbox_Z", "listbox", 0, next_square(0))
+rand_field_properties(f)
+
+//combobox with same name
+var f = this.addField("listbox0_Z", "listbox", 0, next_square(0))
+rand_field_properties(f)
+
+var f = this.addField("listbox0_Z", "listbox", 1, next_square(1))
+rand_field_properties(f)
+///////////////////////////////////////listbox
+
+///////////////////////////////////////checkbox
+//stand alone checkbox
+var f = this.addField("checkbox_Z", "checkbox", 0, next_square(0))
+rand_field_properties(f)
+
+//checkbox with samename
+var f = this.addField("checkbox0_Z", "checkbox", 0, next_square(0))
+rand_field_properties(f)
+var f = this.addField("checkbox0_Z", "checkbox", 1, next_square(1))
+rand_field_properties(f)
+
+//hierachy checkBox
+var f = this.addField("checkbox1.A_Z", "checkbox", 0, next_square(0))
+rand_field_properties(f)
+var f = this.addField("checkbox1.B_Z", "checkbox", 1, next_square(1))
+rand_field_properties(f)
+///////////////////////////////////////checkbox
+
+///////////////////////////////////////radiobutton
+//stand alone checkbox
+var f = this.addField("radiobutton_Z", "radiobutton", 0, next_square(0))
+rand_field_properties(f)
+
+//checkbox with samename
+var f = this.addField("radiobutton0_Z", "radiobutton", 0, next_square(0))
+rand_field_properties(f)
+var f = this.addField("radiobutton0_Z", "radiobutton", 1, next_square(1))
+rand_field_properties(f)
+///////////////////////////////////////radiobutton
+
+///////////////////////////////////////signature
+//stand alone signature
+var f = this.addField("signature_Z", "signature", 0, next_square(0))
+rand_field_properties(f)
 ///////////////////////////////////////signature
 
