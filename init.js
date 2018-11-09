@@ -1,6 +1,8 @@
-/* this code will be run inside adobe's javascript console  to create a template PDF file for fuzzing */
-pageBox = [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
-
+/* run this code inside acrobat with js.pdf to generate template file */
+/*
+* util functions
+*/
+pageBox 	= [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
 box_count_x = [0, 0]
 box_count_y = [0, 0]
 
@@ -23,32 +25,37 @@ function next_square(nPage) {
 	return r
 }
 
-/*
-for (var i = 0; i < 28; i++) {
-	var f = this.addField("text"+i, "text", 0, next_square(0))
-	f.borderColor = color.red
-	f.lineWidth = 1
+Array.prototype.choice = function (){
+	return this[randuint() % this.length];
 }
-*/
-
-///////////////////////////////////////utils
-MAX_STRING_LENGTH = 8
-MAX_ARRAY_LENGTH = 8
 
 randint = function () {
-	var min = (-Math.pow(2, 31))
-	var max = (Math.pow(2, 31)-1)
-	var range =  max - min
-	var rand = Math.floor(Math.random() * (range + 1));
-	var r = min + rand;
-	util.printf("%d,", r);
+	var min 	= -2147483648
+	var max 	= 2147483647
+	var range 	=  max - min
+	var rand 	= Math.floor(Math.random() * (range + 1));
+	var r 		= min + rand;
+	util.printf("\n[.]%d\n", r)
 	return r;
 }
 
-randintarray = function () {
-	var r = []
-	var length = (randint() % MAX_ARRAY_LENGTH) + 1
-	for(var i = 0; i < length; i++) r.push(randint())
+randuint = function () {
+	var max 	= 2147483647
+	var rand 	= Math.floor(Math.random() * (max + 1));
+	util.printf("\n[.]%d\n", rand)
+	return rand;
+}
+
+randfloat = function () {
+	/* HACK */
+	return (randuint() % 101) / 100
+}
+
+randstring = function () {
+	/* CHECK */
+	var r = ""
+	var length = (randuint() % MAX_STRING_LENGTH) + 1
+	for(var i = 0; i < length; i++) r += String.fromCharCode(randint() & 0xff)
 	return r
 }
 
@@ -56,209 +63,219 @@ randbool = function () {
 	return [true, false].choice()
 }
 
-Array.prototype.choice = function (){
-	return this[Math.abs(randint()) % this.length];
+assert = function (condition, message) {
+    if (!condition) {
+    	var err = {}
+    	err.name = "AssertionError"
+    	if (message) err.message = message
+        throw err
+    }
 }
 
-randstring = function () {
-	/* CHECK */
-	var r = ""
-	var length = (randint() % MAX_STRING_LENGTH) + 1
-	for(var i = 0; i < length; i++) r += String.fromCharCode(randint() & 0xff)
+MAX_STRING_LENGTH 	= 8
+MAX_ARRAY_LENGTH 	= 8
+
+randintarray = function () {
+	var r = []
+	var length = (randuint() % MAX_ARRAY_LENGTH) + 1
+	for(var i = 0; i < length; i++) r.push(randint())
 	return r
+}
+
+randstringarray = function () {
+	var r = []
+	var length = (randuint() % MAX_ARRAY_LENGTH) + 1
+	for(var i = 0; i < length; i++) r.push(randstring())
+	return r	
 }
 
 randcolor = function () {
 	var c = []
 	c.push(["T", "G", "RGB", "CMYK"].choice())
 
-	if (c[0] == "G") c.push(Math.random())
+	if (c[0] == "G") c.push(randfloat())
 	else if (c[0] == "RGB") {
-		c.push(Math.random())
-		c.push(Math.random())
-		c.push(Math.random())
+		c.push( randfloat() )
+		c.push( randfloat() )
+		c.push( randfloat() )
 	} else if (c[0] == "CMYK") {
-		c.push(Math.random())
-		c.push(Math.random())
-		c.push(Math.random())
-		c.push(Math.random())
+		c.push( randfloat() )
+		c.push( randfloat() )
+		c.push( randfloat() )
+		c.push( randfloat() )
 	}
 	return c
 }
 
-assert = function (condition, message) {
-    if (!condition) {
-        throw message || "Fuzzer.assertion failed";
-    }
+randspan = function () {
+	var span = {
+		alignment: field_properties.alignment(),
+		fontFamily: function() {
+			return ["symbol", "serif", "sans-serif", "cursive", "monospace", "fantasy"].choice()
+		}(),
+		fontStretch: function () {
+			return ["ultra-condensed", "extra-condensed, condensed", "semi-condensed, normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded"].choice()
+		}(),
+		fontStyle: function () {
+			return ["italic", "normal"].choice()
+		}(),
+		fontWeight: function () {
+			/* CHECK */
+			return randint()
+		}(),
+		strikethrough: randbool(),
+		subscript: randbool(),
+		superscript: randbool(),
+		text: randstring(),
+		textColor: randcolor(),
+		/*CHECK */
+		textSize: randuint(),
+		underline: randbool()
+	}
+	return span
 }
-///////////////////////////////////////utils
 
 field_properties = {
-	alignment: function () {
+	alignment: function (f) {
 		return ["left", "right", "center"].choice()
 	},
-	borderStyle: function () {
+	borderStyle: function (f) {
 		return ["solid", "dashed", "beveled", "inset", "underline"].choice()
 	},
-	buttonAlignX: function() {
-		return Math.abs(randint() % 101)
+	buttonAlignX: function(f) {
+		return randuint() % 101
 	},
-	buttonAlignY: function() {
-		return Math.abs(randint() % 101)
+	buttonAlignY: function(f) {
+		return randuint() % 101
 	},
 	buttonFitBounds: randbool,
-	buttonPosition: function() {
+	buttonPosition: function(f) {
 		return [position.textOnly, position.iconOnly, position.iconTextV, position.textIconV, position.iconTextH, position.textIconH, position.overlay].choice()
 	},
-	buttonScaleHow: function () {
+	buttonScaleHow: function (f) {
 		return [scaleHow.proportional, scaleHow.anamorphic].choice()
 	},
-	buttonScaleWhen: function () {
+	buttonScaleWhen: function (f) {
 		return [scaleWhen.always, scaleWhen.never, scaleWhen.tooBig, scaleWhen.tooSmall].choice()
 	},
 	calcOrderIndex: randint,
 	/* CHECK */
-	charLimit: function () {
-		return Math.abs(randint()) % 1024
+	charLimit: function (f) {
+		return randuint() % 1024
 	},
 	comb: randbool,
 	commitOnSelChange: randbool,
 	currentValueIndices: function (f) {
-		var numItems = f.numItems
-		var length = (randint() % numItems) + 1
-		var A = new Array()
-		for(var i = 0; i < length; i++) A.push( (randint() % numItems) )
-		return [ (randint() % numItems), A ].choice()  
+		var numItems 	= f.numItems
+		var length 		= (randint() % numItems) + 1
+		var A 			= new Array()
+		/* CHECK */
+		for(var i = 0; i < length; i++) {
+			A.push( (randuint() % numItems) )
+		}
+		return [(randuint()%numItems), A].choice()  
 	},
-	/*TODO defaultStyle: null, */
+	defaultStyle: randspan,
 	defaultValue: randstring,
 	doNotScroll: randbool,
 	doNotSpellCheck: randbool,
 	delay: randbool,
 	display: function () {
-		/* TESTING */
-		//return [display.visible, display.hidden, display.noPrint, display.noView].choice()
-		return display.visible
+		return [display.visible, display.hidden, display.noPrint, display.noView].choice()
 	},
-	/*TODO doc: null, */
+	doc: null,
 	editable: randbool,
 	exportValues: randintarray,
 	/*TODO fileSelect: null, */
 	fillColor: randcolor,
 	hidden: randbool,
-	highlight: function () {
+	highlight: function (f) {
 		return [highlight.n, highlight.i, highlight.p, highlight.o].choice()
 	},
-	/* CHECK more relax or not */
-	//lineWidth: randint,
-	lineWidth: function () {
+	/* CHECK */
+	lineWidth: function (f) {
 		return [0, 1, 2, 3].choice()
 	},
 	multiline: randbool,
 	multipleSelection: randbool,
-	/*TODO name: ,*/
-	/*TODO numItems: ,*/
-	/*TODO page: ,*/
+	name: null,
+	numItems: null,
+	page: null,
 	password: randbool,
 	print: randbool,
 	radiosInUnison: randbool,
 	readonly: randbool,
-	//TODO not to messup the layout for now
-	/* rect: function () {
+	rect: function (f) {
 		return next_square(0)
-	}, */
+	},
 	required: randbool,
 	richText: randbool,
 	richValue: function (f) {
+		/* try to fetch length of the field */
 		try {
 			var spans = f.richValue
-		} catch (err) {
-			return null
-		}
+		} catch (err) { return null }
 		
-		var span_properties = {
-			alignment: this.alignment(),
-			fontFamily: function() {
-				return ["symbol", "serif", "sans-serif", "cursive", "monospace", "fantasy"]
-			},
-			fontStretch: function () {
-				return ["ultra-condensed", "extra-condensed, condensed", "semi-condensed, normal", "semi-expanded", "expanded", "extra-expanded", "ultra-expanded"].choice()
-			},
-			fontStyle: function () {
-				return ["italic", "normal"].choice()
-			},
-			fontWeight: function () {
-				/*CHECK should i put it in range */
-				return randint()
-			},
-			strikethrough: randbool,
-			subscript: randbool,
-			superscript: randbool,
-			text: randstring,
-			textColor: randcolor,
-			/*CHECK */
-			textSize: Math.random,
-			underline: randbool
-		}
-
-		if (spans.length) {
+		var length = spans.length
+		if (length) {
 			var r_spans = []
-			for (var i = 0; i < spans.length; i++) {
-				var span = {}
-				for(var prop in span_properties) {
-					span[prop] = span_properties[prop]()
-				}
-				r_spans.push(span)
+			for (var i = 0; i < length; i++) {
+				r_spans.push(randspan())
 			}
 			return r_spans
 		}
+		return null
 	},
-	rotation: function () {
+	rotation: function (f) {
 		return [0, 190, 180, 270].choice()
 	},
 	strokeColor: randcolor,
-	style: function () {
+	style: function (f) {
 		return [style.ch, style.cr, style.di, style.ci, style.st, style.sq].choice()
 	},
 	submitName: randstring,
 	textColor: randcolor,
-	textFont: function () {
+	textFont: function (f) {
 		return [font.Times, font.TimesB, font.TimesI, font.TimesBI, font.Helv, font.HelvB, font.HelvI, font.HelvBI, font.Cour, font.CourB, font.CourI, font.CourBI, font.Symbol, font.ZapfD].choice()
 	},
-	textSize: function () {
-		return Math.abs(randint() % 1024)
+	/* CHECK */
+	textSize: function (f) {
+		return randuint() % 32768
 	},
-	/*TODO type:, */
+	type: null,
 	userName: randstring,
-	/* CHECK more relax or not*/
+	/* CHECK */
 	value: function (f) {
-		//return {[randint(), randstring(), randintarray()].choice()}
-		field_type = f.type
+		var field_type = f.type
 		if (field_type == "text") 	return randstring()
 		if (field_type == "button") return null
 		if (field_type == "listbox" || field_type == "combobox") return randintarray()
 		if (field_type == "checkbox" || field_type == "radiobutton") return randstring()
-	}	
-	/*TODO valueAsString:, */
+	},	
+	valueAsString: null
 }
 
-fields_methods = {
-	/*TODO browseForFileToSubmit:, */
+field_methods = {
+	/*
+	TODO browseForFileToSubmit:,
+	*/
 	buttonGetCaption: function(f) {
 		f.buttonGetCaption([0, 1, 2].choice())
 	},
 	buttonGetIcon: function(f) {
 		f.buttonGetIcon([0, 1, 2].choice())
 	},
-	/*TODO buttonImportIcon:, */
+	/*
+	TODO buttonImportIcon:,
+	*/
 	buttonSetCaption: function(f) {
 		f.buttonSetCaption(randstring(), [0, 1, 2].choice())
 	},
 	buttonSetIcon: function(f) {
-		f.buttonSetIcon(this.getIcon('icon'))
+		f.buttonSetIcon(f.doc.getIcon('icon'))
 	},
-	/* CHECK */
 	checkThisBox: function(f) {
+		/* CHECK nWidget */
 		var nWidget = [0, 1].choice()
 		f.checkThisBox(nWidget, randbool())
 	},
@@ -266,30 +283,37 @@ fields_methods = {
 		f.clearItems()
 	},
 	defaultIsChecked: function (f) {
+		/* CHECK nWidget */
 		var nWidget = [0, 1].choice()
 		f.defaultIsChecked(nWidget, randbool())
 	},
-	/* CHECK */
 	deleteItemAt: function (f) {
-		var nIdx = randint()
+		try {
+			var length = f.numItems()
+		} catch (err) { return null}
+		/* CHECK nIdx */
+		var nIdx = randuint() % length
 		f.deleteItemAt(nIdx)
 	},
 	getArray: function (f) {
 		f.getArray()
 	},
-	/* CHECK */
 	getItemAt: function (f) {
+		/* CHECK */
 		var nIdx = randint()
 		f.getItemAt(nIdx, randbool())
 	},
 	getLock: function (f) {
-		f.getlock()
+		f.getLock()
 	},
 	insertItemAt: function (f) {
-		if (randint() % 2 == 0) {
-			f.insertItemAt({cName:randstring(), nIdx: [-1, Math.abs(randint()) % 4]})
+		var type = f.type
+		if (type != "listbox" && type != "combobox") return null
+		var length = f.numItems
+		if (randuint() % 2 == 0) {
+			f.insertItemAt({cName: randstring(), nIdx: [-1, randuint() % length].choice()})
 		} else {
-			f.insertItemAt({cName: randstring(), nIdx: [-1, Math.abs(randint()) % 4], cExport: randstring()})
+			f.insertItemAt({cName: randstring(), nIdx: [-1, randuint() % length].choice(), cExport: randstring()})
 		}
 	},
 	isBoxChecked: function (f) {
@@ -298,25 +322,36 @@ fields_methods = {
 	isDefaultChecked: function (f) {
 		f.isBoxChecked([0, 1].choice())
 	},
-	// setAction: function (f) {
+	setAction: function (f) {
 
-	// },
+	},
 	setFocus: function (f) {
 		f.setFocus()
 	},
-	/* CHECK */
-	setItems: randintarray
-	/* TODO setLock:, */
+	setItems: function (f) {
+		/* CHECK */
+		f.setItems(randstringarray())
+	}
+	/*
+	*TODO setLock:,
+	*/
 }
 
 function rand_field_properties(f) {
 	for (var prop in field_properties) {
 		try {
-			var r = field_properties[prop](f)
-			assert( r != undefined )
-			if (r != null) f[prop] = r
+			if (field_properties[prop] != null) {
+				var r = field_properties[prop](f)
+				assert (r != null)
+				f[prop] = r
+			}
 		} catch (err) {
-			;
+			if (err.name != "InvalidGetError"  && err.name != "InvalidSetError" && err.name != "AssertionError") {
+				console.println('[*]' + prop)
+				console.println('[-]' + err.lineNumber)
+				console.println(err.name)
+				console.println(err)
+			}
 		}
 	}
 }
@@ -326,7 +361,13 @@ function rand_field_methods(f) {
 		try {
 			var r = field_methods[prop](f)
 		} catch (err) {
-			;
+			if (err.name != "GeneralError") {
+				console.println('[*]' + prop)
+				console.println('[-]' + err.lineNumber)
+				console.println(err.name)
+				console.println(err)	
+				console.println(f.name)			
+			}
 		}
 	}
 }
@@ -535,18 +576,23 @@ var f = this.addField("signature", "signature", 0, next_square(0))
 //stand alone textField
 var f = this.addField("textfield_Z", "text", 0, next_square(0));
 rand_field_properties(f)
+rand_field_methods(f)
 
 //two textFields with same name each on seperate page
 var f = this.addField("textField0_Z", "text", 0, next_square(0));
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("textField0_Z", "text", 1, next_square(1));
 rand_field_properties(f)
+rand_field_methods(f)
 
 //hierachy textField
 var f =this.addField("textField1.A_Z", "text", 0, next_square(0));
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("textField1.B_Z", "text", 1, next_square(1));
 rand_field_properties(f)
+rand_field_methods(f)
 
 ///////////////////////////////////////textField
 
@@ -554,85 +600,107 @@ rand_field_properties(f)
 //stand alone button
 var f = this.addField("button_Z", "button", 0, next_square(0))
 f.buttonSetCaption("button")
-rand_field_properties(f)
 f.buttonSetIcon(this.getIcon('icon'))
+rand_field_properties(f)
+rand_field_methods(f)
+
 
 //buttons with same name on two seperate page
 var f = this.addField("button0_Z", "button", 0, next_square(0))
 f.buttonSetCaption("button0")
 rand_field_properties(f)
+rand_field_methods(f)
 
 var f = this.addField("button0_Z", "button", 1, next_square(1))
 f.buttonSetCaption("button0")
 rand_field_properties(f)
+rand_field_methods(f)
 
 //hierachy button
 var f = this.addField("button1.A_Z", "button", 0, next_square(0))
 f.buttonSetCaption("button1.A")
 rand_field_properties(f)
+rand_field_methods(f)
+
 var f = this.addField("button1.B_Z", "button", 1, next_square(1))
 f.buttonSetCaption("button1.B")
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////buttonField
 
 ///////////////////////////////////////combobox
 //stand alone combobox
 var f = this.addField("combobox_Z", "combobox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 
 //combobox with same name
 var f = this.addField("combobox0_Z", "combobox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("combobox0_Z", "combobox", 1, next_square(1))
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////combobox
 
 ///////////////////////////////////////listbox
 //stand alone combobox
 var f = this.addField("listbox_Z", "listbox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 
 //combobox with same name
 var f = this.addField("listbox0_Z", "listbox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 
 var f = this.addField("listbox0_Z", "listbox", 1, next_square(1))
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////listbox
 
 ///////////////////////////////////////checkbox
 //stand alone checkbox
 var f = this.addField("checkbox_Z", "checkbox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 
 //checkbox with samename
 var f = this.addField("checkbox0_Z", "checkbox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("checkbox0_Z", "checkbox", 1, next_square(1))
 rand_field_properties(f)
+rand_field_methods(f)
 
 //hierachy checkBox
 var f = this.addField("checkbox1.A_Z", "checkbox", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("checkbox1.B_Z", "checkbox", 1, next_square(1))
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////checkbox
 
 ///////////////////////////////////////radiobutton
 //stand alone checkbox
 var f = this.addField("radiobutton_Z", "radiobutton", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 
 //checkbox with samename
 var f = this.addField("radiobutton0_Z", "radiobutton", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 var f = this.addField("radiobutton0_Z", "radiobutton", 1, next_square(1))
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////radiobutton
 
 ///////////////////////////////////////signature
 //stand alone signature
 var f = this.addField("signature_Z", "signature", 0, next_square(0))
 rand_field_properties(f)
+rand_field_methods(f)
 ///////////////////////////////////////signature
 
