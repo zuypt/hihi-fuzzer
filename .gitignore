@@ -1,7 +1,6 @@
 *.pdf
 js/
 js_de/
-js_e/
-test/
 origami/
+dump/
 !js.pdf
