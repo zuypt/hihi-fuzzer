@@ -1,6 +1,10 @@
+this.zoom = 30
+app.alert("CLICK OK TO START FUZZING")
+console.show()
 /*
 * util functions
 */
+util.printf("\x01=========RUNNING=============")
 pageBox 	= [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
 box_count_x = [0, 0]
 box_count_y = [0, 0]
@@ -34,14 +38,14 @@ randint = function () {
 	var range 	=  max - min
 	var rand 	= Math.floor(Math.random() * (range + 1));
 	var r 		= min + rand;
-	util.printf("\x02", r)
+	util.printf("\x02%d", r)
 	return r;
 }
 
 randuint = function () {
 	var max 	= 2147483647
 	var rand 	= Math.floor(Math.random() * (max + 1));
-	util.printf("\x02", rand)
+	util.printf("\x02%d", rand)
 	return rand;
 }
 
@@ -54,7 +58,7 @@ randstring = function () {
 	/* CHECK */
 	var r = ""
 	var length = (randuint() % MAX_STRING_LENGTH) + 1
-	for(var i = 0; i < length; i++) r += String.fromCharCode(randint() & 0xff)
+	for(var i = 0; i < length; i++) r += String.fromCharCode(randuint() & 0xff)
 	return r
 }
 
@@ -127,7 +131,7 @@ randspan = function () {
 		}(),
 		fontWeight: function () {
 			/* CHECK */
-			return randint()
+			return randuint() % 7001
 		}(),
 		strikethrough: randbool(),
 		subscript: randbool(),
@@ -168,16 +172,17 @@ field_properties = {
 	/* CHECK */
 	charLimit: function (f) {
 		return randuint() % 1024
+		// return randint()
 	},
 	comb: randbool,
 	commitOnSelChange: randbool,
 	currentValueIndices: function (f) {
 		var numItems 	= f.numItems
-		var length 		= (randint() % numItems) + 1
+		var length 		= (randuint() % numItems) + 1
 		var A 			= new Array()
 		/* CHECK */
 		for(var i = 0; i < length; i++) {
-			A.push( (randuint() % numItems) )
+			A.push( ( randuint()%numItems ) )
 		}
 		return [(randuint()%numItems), A].choice()  
 	},
@@ -201,6 +206,7 @@ field_properties = {
 	/* CHECK */
 	lineWidth: function (f) {
 		return [0, 1, 2, 3].choice()
+		// return randint()
 	},
 	multiline: randbool,
 	multipleSelection: randbool,
@@ -247,6 +253,7 @@ field_properties = {
 	/* CHECK */
 	textSize: function (f) {
 		return randuint() % 32768
+		// return randint()
 	},
 	type: null,
 	userName: randstring,
@@ -257,6 +264,8 @@ field_properties = {
 		if (field_type == "button") return null
 		if (field_type == "listbox" || field_type == "combobox") return randintarray()
 		if (field_type == "checkbox" || field_type == "radiobutton") return randstring()
+
+		// return [randint(), randstring(), randintarray(), null]
 	},	
 	valueAsString: null
 }
@@ -284,6 +293,8 @@ field_methods = {
 		/* CHECK nWidget */
 		var nWidget = [0, 1].choice()
 		f.checkThisBox(nWidget, randbool())
+
+		// f.checkThisBox(randint(), randbool())
 	},
 	clearItems: function(f) {
 		f.clearItems()
@@ -292,6 +303,8 @@ field_methods = {
 		/* CHECK nWidget */
 		var nWidget = [0, 1].choice()
 		f.defaultIsChecked(nWidget, randbool())
+
+		// f.defaultIsChecked(randint(), randbool())
 	},
 	deleteItemAt: function (f) {
 		try {
@@ -300,13 +313,17 @@ field_methods = {
 		/* CHECK nIdx */
 		var nIdx = randuint() % length
 		f.deleteItemAt(nIdx)
+		// f.deleteItemAt(randint())
 	},
 	getArray: function (f) {
 		f.getArray()
 	},
 	getItemAt: function (f) {
 		/* CHECK */
-		var nIdx = randint()
+		try {
+			var numItems = f.numItems
+		} catch (err) {return null}
+		var nIdx = randuint() % numItems
 		f.getItemAt(nIdx, randbool())
 	},
 	getLock: function (f) {
@@ -316,17 +333,27 @@ field_methods = {
 		var type = f.type
 		if (type != "listbox" && type != "combobox") return null
 		var length = f.numItems
+		/* CHECK */
 		if (randuint() % 2 == 0) {
 			f.insertItemAt({cName: randstring(), nIdx: [-1, randuint() % length].choice()})
 		} else {
 			f.insertItemAt({cName: randstring(), nIdx: [-1, randuint() % length].choice(), cExport: randstring()})
 		}
+
+		// if (randuint() % 2 == 0) {
+		// 	f.insertItemAt({cName: randstring(), nIdx: [-1, randint()].choice()})
+		// } else {
+		// 	f.insertItemAt({cName: randstring(), nIdx: [-1, randint()].choice(), cExport: randstring()})
+		// }
 	},
 	isBoxChecked: function (f) {
 		f.isBoxChecked([0, 1].choice())
+
+		// f.isBoxChecked(randint())
 	},
 	isDefaultChecked: function (f) {
-		f.isBoxChecked([0, 1].choice())
+		f.isDefaultChecked([0, 1].choice())
+		// f.isDefaultChecked(randint())
 	},
 	setAction: function (f) {
 		var triggers = ["MouseUp", "MouseDown", "MouseEnter", "MouseExit", "OnFocus", "OnBlur", "Keystroke", "Validate", "Calculate", "Format"]
@@ -340,11 +367,33 @@ field_methods = {
 	},
 	setItems: function (f) {
 		/* CHECK */
-		f.setItems(randstringarray())
+		var type = f.type
+		if (type != "listbox" && type != "combobox") return null
+		f.setItems([randstringarray(), randintarray()].choice())
 	}
 	/*
 	*TODO setLock:,
 	*/
+}
+
+document_properties = {
+	pageNum: function(doc) {
+		return [0, 1].choice()
+	},
+	zoomType: function(doc) {
+		return [zoomtype.none, zoomtype.fitP, zoomtype.fitW, zoomtype.fitH, zoomtype.fitV].choice()
+	},
+	/* CHECK */
+	zoom: function(doc) {
+		return randuint() % 6400
+		// return randint()
+	}
+}
+
+document_methods = {
+	removeIcon: function(doc) {
+		doc.removeIcon('icon')
+	}
 }
 
 var field_names = [
@@ -366,37 +415,87 @@ var field_names = [
 
 ]
 
+iteration = 0
 function fuzz_one () {
+	iteration += 1
+	if (iteration == 1001) {
+		app.clearInterval(timer)
+		this.closeDoc(true)
+		util.printf("\x03FINISHED")
+	}
 	/* pick a field from field list */
-	var f = this.getField(field_names.choice())
+	var f = this.getField( (field_names.choice()) )
 
-	var t = randprop(field_properties)
+	assert (f != null)
+
+	var t = randprop(document_properties)
+	util.printf("\x01[*]Prop: %s", t[0])
 	try {
-		var r = t[1](f)
-		assert (r != null)	
-		f[t[0]] = r
+		if (t[1] != null) {
+			var r = t[1](this)
+			if (r != null) this[t[0]] = r	
+		}
 	} catch (err) {
-		util.printf("\x01=ProperptyException=")
-		util.printf("\x01name: %s", err.name)
-		util.printf("\x01line: %d", err.lineNum)
-		util.printf("\x01message: %s\n", err.message)
+		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
+			util.printf("\x01=ProperptyException=")
+			util.printf("\x01name: %s", err.name)
+			util.printf("\x01line: %d", err.lineNum)
+			util.printf("\x01message: %s\n", err.message)
+		}
+	}
+
+	// t = randprop(document_methods)
+	// util.printf("\x01[*]Method: %s", t[0])
+	// try {
+	// 	var r = t[1](this)
+	// } catch (err) {
+	// 	if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
+	// 		util.printf("\x01=MethodException=")
+	// 		util.printf("\x01name: %s", err.name)
+	// 		util.printf("\x01line: %d", err.lineNum)
+	// 		util.printf("\x01message: %s\n", err.message)
+	// 	}
+	// }
+
+	t = randprop(field_properties)
+	util.printf("\x01[*]Prop: %s", t[0])
+	try {
+		if (t[1] != null) {
+			var r = t[1](f)
+			if (r != null) f[t[0]] = r
+
+			// var r = t[1](f)	
+			// f[t[0]] = r
+		}
+	} catch (err) {
+		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
+			util.printf("\x01=ProperptyException=")
+			util.printf("\x01name: %s", err.name)
+			util.printf("\x01line: %d", err.lineNum)
+			util.printf("\x01message: %s\n", err.message)
+		}
 	}
 
 	t = randprop(field_methods)
+	util.printf("\x01[*]Method: %s", t[0])
 	try {
 		var r = t[1](f)
 	} catch (err) {
-		util.printf("\x01=MethodException=")
-		util.printf("\x01name: %s", err.name)
-		util.printf("\x01line: %d", err.lineNum)
-		util.printf("\x01message: %s\n", err.message)
+		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
+			util.printf("\x01=MethodException=")
+			util.printf("\x01name: %s", err.name)
+			util.printf("\x01line: %d", err.lineNum)
+			util.printf("\x01message: %s\n", err.message)
+		}
 	}
 }
 
 /*
 * main fuzzer loop
+* fuzz for 1000 iterations
 */
-while (true) {
-	fuzz_one()
-}
-util.printf("\x01finished")
+// for(var i = 0; i < 1000; i++) {
+// 	fuzz_one()
+// }
+var timer = app.setInterval('fuzz_one()', 50)
+// util.printf("\x03FINISHED")

@@ -3,5 +3,12 @@ js/
 js_de/
 js_e/
 test/
+trusted/
+dump/
+logs/
+*.rb
 origami/
 !js.pdf
+!addjs.rb
+test.js
+t.js
