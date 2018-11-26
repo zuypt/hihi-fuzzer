@@ -59,6 +59,7 @@ randstring = function () {
 	var r = ""
 	var length = (randuint() % MAX_STRING_LENGTH) + 1
 	for(var i = 0; i < length; i++) r += String.fromCharCode(randuint() & 0xff)
+	if ( (r.charCodeAt(0) == 0xfe) && (r.charCodeAt(1) == 0xff) ) return randstring()
 	return r
 }
 
@@ -396,7 +397,7 @@ document_methods = {
 	}
 }
 
-var field_names = [
+field_names = [
 	"textField0", "textField1.A", "textField1.B", 
 	"button", "button0", "button1.A", "button1.B",
 	"combobox", "combobox0", 
@@ -411,29 +412,17 @@ var field_names = [
 	"listbox_Z", "listbox0_Z",
 	"checkbox_Z", "checkbox0_Z", "checkbox1.A_Z", "checkbox1.B_Z",
 	"radiobutton_Z", "radiobutton0_Z",
-	"signature_Z",
+	"signature_Z"
 
 ]
 
-iteration = 0
-function fuzz_one () {
-	iteration += 1
-	if (iteration == 1001) {
-		app.clearInterval(timer)
-		this.closeDoc(true)
-		util.printf("\x03FINISHED")
-	}
-	/* pick a field from field list */
-	var f = this.getField( (field_names.choice()) )
-
-	assert (f != null)
-
-	var t = randprop(document_properties)
+function fuzz_one_prop(obj, prop_dict) {
+	var t = randprop(prop_dict)
 	util.printf("\x01[*]Prop: %s", t[0])
 	try {
 		if (t[1] != null) {
-			var r = t[1](this)
-			if (r != null) this[t[0]] = r	
+			var r = t[1](obj)
+			if (r != null) obj[t[0]] = r
 		}
 	} catch (err) {
 		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
@@ -443,43 +432,13 @@ function fuzz_one () {
 			util.printf("\x01message: %s\n", err.message)
 		}
 	}
+}
 
-	// t = randprop(document_methods)
-	// util.printf("\x01[*]Method: %s", t[0])
-	// try {
-	// 	var r = t[1](this)
-	// } catch (err) {
-	// 	if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
-	// 		util.printf("\x01=MethodException=")
-	// 		util.printf("\x01name: %s", err.name)
-	// 		util.printf("\x01line: %d", err.lineNum)
-	// 		util.printf("\x01message: %s\n", err.message)
-	// 	}
-	// }
-
-	t = randprop(field_properties)
-	util.printf("\x01[*]Prop: %s", t[0])
-	try {
-		if (t[1] != null) {
-			var r = t[1](f)
-			if (r != null) f[t[0]] = r
-
-			// var r = t[1](f)	
-			// f[t[0]] = r
-		}
-	} catch (err) {
-		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
-			util.printf("\x01=ProperptyException=")
-			util.printf("\x01name: %s", err.name)
-			util.printf("\x01line: %d", err.lineNum)
-			util.printf("\x01message: %s\n", err.message)
-		}
-	}
-
-	t = randprop(field_methods)
+function fuzz_one_method(obj, method_dict) {
+	var t = randprop(method_dict)
 	util.printf("\x01[*]Method: %s", t[0])
 	try {
-		var r = t[1](f)
+		t[1](obj)
 	} catch (err) {
 		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
 			util.printf("\x01=MethodException=")
@@ -490,12 +449,28 @@ function fuzz_one () {
 	}
 }
 
+iteration = 0
+function fuzz_one () {
+	iteration += 1
+	if (iteration == 1001) {
+		app.clearInterval(timer)
+		this.closeDoc(true)
+		util.printf("\x03FINISHED")
+	}
+
+	if(iteration == 500) {
+		this.removeIcon('icon')
+	}
+
+	/* pick a field from field list */
+	var f = this.getField( (field_names.choice()) )
+	assert (f != null)
+	fuzz_one_prop	(this, 	document_properties)
+	fuzz_one_prop	(f, 	field_properties)
+	fuzz_one_method	(f, 	field_methods)
+}
+
 /*
 * main fuzzer loop
-* fuzz for 1000 iterations
 */
-// for(var i = 0; i < 1000; i++) {
-// 	fuzz_one()
-// }
 var timer = app.setInterval('fuzz_one()', 50)
-// util.printf("\x03FINISHED")
