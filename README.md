@@ -16,6 +16,6 @@
  * python fuzzer.py`
 
 # TODO
- * Mutate template.pdf to look for file format bugs.
+ * Mutate `template.pdf` to look for file format bugs.
  * Do the same for annotation.
     
