@@ -288,7 +288,7 @@ field_methods = {
 		f.buttonSetCaption(randstring(), [0, 1, 2].choice())
 	},
 	buttonSetIcon: function(f) {
-		f.buttonSetIcon(f.doc.getIcon('icon'))
+		f.buttonSetIcon([f.doc.getIcon('icon'), null].choice())
 	},
 	checkThisBox: function(f) {
 		/* CHECK nWidget */
