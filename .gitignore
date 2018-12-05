@@ -12,3 +12,9 @@ origami/
 !addjs.rb
 test.js
 t.js
+hook.js
+hook.py
+replay.js
+replay.py
+*.txt
+leak.pdf
