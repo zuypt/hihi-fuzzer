@@ -382,7 +382,7 @@ document_properties = {
 		return [0, 1].choice()
 	},
 	zoomType: function(doc) {
-		return [zoomtype.none, zoomtype.fitP, zoomtype.fitW, zoomtype.fitH, zoomtype.fitV].choice()
+		return [zoomtype.none, zoomtype.fitP, zoomtype.fitW, zoomtype.fitH, zoomtype.fitV, zoomtype.pref, zoomtype.refW].choice()
 	},
 	/* CHECK */
 	zoom: function(doc) {
