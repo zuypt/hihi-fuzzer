@@ -9,6 +9,18 @@ pageBox 	= [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
 box_count_x = [0, 0]
 box_count_y = [0, 0]
 
+function randpoint() {
+	var maxx = maxy = 800
+
+	var randx   = (randuint() % (2*maxx+1)) - maxx
+	var randy   = (randuint() % (2*maxy+1)) - maxy
+	return [randx, randy]
+}
+
+function randsquare() {
+	return randpoint().concat(randpoint())
+}
+
 function next_square(nPage) {
 	var l = 50
 	var n = Math.floor(596/l)
@@ -219,7 +231,7 @@ field_properties = {
 	radiosInUnison: randbool,
 	readonly: randbool,
 	rect: function (f) {
-		return next_square(0)
+		return randsquare()
 	},
 	required: randbool,
 	richText: randbool,
@@ -382,7 +394,7 @@ document_properties = {
 		return [0, 1].choice()
 	},
 	zoomType: function(doc) {
-		return [zoomtype.none, zoomtype.fitP, zoomtype.fitW, zoomtype.fitH, zoomtype.fitV, zoomtype.pref, zoomtype.refW].choice()
+		return [zoomtype.none, zoomtype.fitP, zoomtype.fitW, zoomtype.fitH, zoomtype.fitV, zoomtype.pref].choice()
 	},
 	/* CHECK */
 	zoom: function(doc) {
@@ -453,8 +465,8 @@ iteration = 0
 function fuzz_one () {
 	iteration += 1
 	if (iteration == 1001) {
-		app.clearInterval(timer)
 		this.closeDoc(true)
+		try{app.clearInterval(timer)} catch (err) {}
 		util.printf("\x03FINISHED")
 	}
 
