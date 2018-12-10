@@ -105,7 +105,7 @@ randstringarray = function () {
 	return r	
 }
 
-var randprop = function (obj) {
+randprop = function (obj) {
     var keys 		= Object.keys(obj)
     var prop_name 	= keys[ randuint() % keys.length ]
     var prop 		= obj[prop_name]
