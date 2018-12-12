@@ -456,9 +456,11 @@ function fuzz_one () {
 		util.printf("\x03FINISHED")
 	}
 
+	/* CHECK
 	if(iteration == 500) {
 		this.removeIcon('icon')
 	}
+	*/
 
 	/* pick a field from field list */
 	var f = this.getField( (field_names.choice()) )
