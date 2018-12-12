@@ -5,10 +5,6 @@ console.show()
 * util functions
 */
 util.printf("\x01=========RUNNING=============")
-pageBox 	= [this.getPageBox({nPage: 0}), this.getPageBox({nPage: 1})]
-box_count_x = [0, 0]
-box_count_y = [0, 0]
-
 function randpoint() {
 	var maxx = maxy = 800
 
@@ -21,27 +17,17 @@ function randsquare() {
 	return randpoint().concat(randpoint())
 }
 
-function next_square(nPage) {
-	var l = 50
-	var n = Math.floor(596/l)
-
-	var x0 = ( pageBox[nPage][0] + l*box_count_x[nPage] )
-	var y0 = pageBox[nPage][1] - (l * box_count_y[nPage])
-	var x1 = x0 + l
-	var y1 = y0 - l
-
-	var r = [x0, y0, x1, y1]
-	box_count_x[nPage] += 1
-
-	if (box_count_x[nPage] == n) {
-		box_count_x[nPage] = 0
-		box_count_y[nPage] += 1
-	}
-	return r
-}
-
 Array.prototype.choice = function (){
 	return this[randuint() % this.length];
+}
+
+Array.prototype.removeI = function(idx) {
+	this.splice(idx, 1)
+}
+
+Array.prototype.removeV = function(v) {
+	var index = this.indexOf(v)
+	if (index != -1) this.splice(index, 1)
 }
 
 randint = function () {
@@ -466,7 +452,7 @@ function fuzz_one () {
 	iteration += 1
 	if (iteration == 1001) {
 		this.closeDoc(true)
-		try{app.clearInterval(timer)} catch (err) {}
+		app.clearInterval(timer)
 		util.printf("\x03FINISHED")
 	}
 
