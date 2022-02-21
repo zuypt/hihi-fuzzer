@@ -1,4 +1,3 @@
-*.pdf
 js/
 js_de/
 js_e/
@@ -9,12 +8,10 @@ logs/
 *.rb
 origami/
 !js.pdf
-!addjs.rb
 test.js
 t.js
 hook.js
 hook.py
 replay.js
-replay.py
 *.txt
 leak.pdf
