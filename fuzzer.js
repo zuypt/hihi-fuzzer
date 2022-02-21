@@ -390,8 +390,22 @@ document_properties = {
 }
 
 document_methods = {
-	removeIcon: function(doc) {
+	calculateNow: function(doc) {
+		doc.calculateNow()
+	}, 
+	scroll: function(doc) {
+		var pos = randpoint()
+		doc.scroll(pos[0], pos[1])
+	},
+	selectPageNthWord: function(doc) {
+		/* CHECK 2 args */
+		doc.selectPageNthWord([0, 1].choice(), randint(), randbool())
+	},
+	/* removeIcon: function(doc) {
 		doc.removeIcon('icon')
+	}*/
+	resetForm: function(doc) {
+		doc.resetForm(doc.getField(field_names.choice()))
 	}
 }
 
@@ -416,7 +430,7 @@ field_names = [
 
 function fuzz_one_prop(obj, prop_dict) {
 	var t = randprop(prop_dict)
-	util.printf("\x01[*]Prop: %s", t[0])
+	util.printf("\x01Prop: %s", t[0])
 	try {
 		if (t[1] != null) {
 			var r = t[1](obj)
@@ -434,7 +448,7 @@ function fuzz_one_prop(obj, prop_dict) {
 
 function fuzz_one_method(obj, method_dict) {
 	var t = randprop(method_dict)
-	util.printf("\x01[*]Method: %s", t[0])
+	util.printf("\x01Method: %s", t[0])
 	try {
 		t[1](obj)
 	} catch (err) {
@@ -445,6 +459,28 @@ function fuzz_one_method(obj, method_dict) {
 			util.printf("\x01message: %s\n", err.message)
 		}
 	}
+}
+
+function definePropertyFuzz(obj, prop_dict) {
+	if (randuint() % 5 != 0) return 
+	var prop = Object.getOwnPropertyNames(obj).choice()
+	util.printf("\x01[DEBUG] definePropertyFuzz " + prop)
+	try {
+		Object.defineProperty(obj, prop, randprop(prop_dict)[1](obj))
+	} catch (err) {
+		if (err.name != "InvalidSetError" && err.name != "InvalidGetError" && err.name != "GeneralError") {
+			util.printf("\x01=MethodException=")
+			util.printf("\x01name: %s", err.name)
+			util.printf("\x01line: %d", err.lineNum)
+			util.printf("\x01message: %s\n", err.message)
+		}
+	}
+}
+
+function objFreezeFuzz() {
+	if (randuint() % 5 != 0) return 
+
+	Object.freeze( this.getField( (field_names.choice()) ) )
 }
 
 iteration = 0
@@ -465,6 +501,7 @@ function fuzz_one () {
 	/* pick a field from field list */
 	var f = this.getField( (field_names.choice()) )
 	assert (f != null)
+	objFreezeFuzz()
 	fuzz_one_prop	(this, 	document_properties)
 	fuzz_one_prop	(f, 	field_properties)
 	fuzz_one_method	(f, 	field_methods)
@@ -473,4 +510,4 @@ function fuzz_one () {
 /*
 * main fuzzer loop
 */
-var timer = app.setInterval('fuzz_one()', 50)
+var timer = app.setInterval('fuzz_one()', 1500)

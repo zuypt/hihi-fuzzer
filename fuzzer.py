@@ -95,7 +95,11 @@ class Fuzzer(EventHandler):
         for module in process.iter_modules():
             if module.match_name('EScript.api'):
                 base = module.get_base()
-                event.debug.break_at(pid, 0x00C74BB + base, self.printf_hook)      
+                
+                if len(sys.argv) >= 2:
+                    event.debug.break_at(pid, 0x00C74BB + base, self.printf_hook)
+                else:
+                    event.debug.break_at(pid, 0x00C76C4 + base, self.printf_hook)
 
 Rands       = []
 
