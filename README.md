@@ -12,8 +12,8 @@
 # Usage:
  * Open `js.pdf` with Adobe Acrobat a console would appear. Paste the code inside `init.js` into the console and execute => save as template.pdf.
  * Template would contain many different type of Fields.
- * ruby addjs.rb template.pdf fuzzer.js trusted/fuzz.pdf
- * python fuzzer.py`
+ * `ruby addjs.rb template.pdf fuzzer.js trusted/fuzz.pdf`
+ * `python fuzzer.py`
 
 # TODO
  * Mutate `template.pdf` to look for file format bugs.
